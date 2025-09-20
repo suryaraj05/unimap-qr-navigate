@@ -25,23 +25,87 @@ const Map = () => {
       <Header />
       
       <main className="flex-1 relative">
-        {/* Map Container */}
-        <div className="relative h-[calc(100vh-4rem)] bg-gradient-secondary">
-          {/* Placeholder Map */}
-          <div className="absolute inset-0 bg-gradient-to-br from-secondary to-accent/20 flex items-center justify-center">
-            <div className="text-center p-8 bg-background/80 backdrop-blur-sm rounded-lg shadow-elevated max-w-md">
-              <MapPinIcon className="h-16 w-16 text-primary mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Interactive Campus Map</h3>
-              <p className="text-muted-foreground mb-4">
-                Explore buildings, facilities, and points of interest across campus. 
-                Click the Navigate button to get directions.
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="bg-primary/10 p-2 rounded">📚 Library</div>
-                <div className="bg-primary/10 p-2 rounded">🍕 Dining Hall</div>
-                <div className="bg-primary/10 p-2 rounded">🏃 Gym</div>
-                <div className="bg-primary/10 p-2 rounded">🅿️ Parking</div>
+        {/* Google Maps-like Map Container */}
+        <div className="relative h-[calc(100vh-4rem)] bg-background">
+          {/* Interactive Map */}
+          <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-muted/50 overflow-hidden">
+            {/* Road Network Pattern */}
+            <div className="absolute inset-0 opacity-30">
+              {/* Horizontal roads */}
+              <div className="absolute top-1/6 left-0 right-0 h-0.5 bg-muted-foreground/40"></div>
+              <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-muted-foreground/40"></div>
+              <div className="absolute top-1/2 left-0 right-0 h-1 bg-muted-foreground/50"></div>
+              <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-muted-foreground/40"></div>
+              <div className="absolute top-5/6 left-0 right-0 h-0.5 bg-muted-foreground/40"></div>
+              
+              {/* Vertical roads */}
+              <div className="absolute left-1/6 top-0 bottom-0 w-0.5 bg-muted-foreground/40"></div>
+              <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-muted-foreground/40"></div>
+              <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-muted-foreground/50"></div>
+              <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-muted-foreground/40"></div>
+              <div className="absolute left-5/6 top-0 bottom-0 w-0.5 bg-muted-foreground/40"></div>
+            </div>
+            
+            {/* Campus Location Pins */}
+            <div className="absolute top-[20%] left-[25%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-10 h-10 bg-university-teal rounded-full flex items-center justify-center text-white shadow-elevated hover:bg-university-blue transition-colors">
+                📚
               </div>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap">Main Library</div>
+            </div>
+            
+            <div className="absolute top-[35%] left-[60%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-10 h-10 bg-university-teal rounded-full flex items-center justify-center text-white shadow-elevated hover:bg-university-blue transition-colors">
+                🏢
+              </div>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap">Student Union</div>
+            </div>
+            
+            <div className="absolute top-[55%] left-[40%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-10 h-10 bg-university-teal rounded-full flex items-center justify-center text-white shadow-elevated hover:bg-university-blue transition-colors">
+                🍕
+              </div>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap">Dining Hall</div>
+            </div>
+            
+            <div className="absolute top-[70%] left-[75%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-10 h-10 bg-university-teal rounded-full flex items-center justify-center text-white shadow-elevated hover:bg-university-blue transition-colors">
+                🏃
+              </div>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap">Gym</div>
+            </div>
+            
+            <div className="absolute top-[25%] left-[80%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-10 h-10 bg-university-teal rounded-full flex items-center justify-center text-white shadow-elevated hover:bg-university-blue transition-colors">
+                🔬
+              </div>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap">Science Building</div>
+            </div>
+            
+            <div className="absolute top-[45%] left-[15%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-10 h-10 bg-university-teal rounded-full flex items-center justify-center text-white shadow-elevated hover:bg-university-blue transition-colors">
+                🎨
+              </div>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap">Arts Center</div>
+            </div>
+            
+            <div className="absolute top-[80%] left-[30%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-10 h-10 bg-university-teal rounded-full flex items-center justify-center text-white shadow-elevated hover:bg-university-blue transition-colors">
+                🅿️
+              </div>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap">Parking A</div>
+            </div>
+            
+            <div className="absolute top-[65%] left-[65%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-10 h-10 bg-university-teal rounded-full flex items-center justify-center text-white shadow-elevated hover:bg-university-blue transition-colors">
+                🏥
+              </div>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap">Medical Center</div>
+            </div>
+            
+            {/* UniMap Branding */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-card">
+              <h2 className="font-bold text-primary text-lg">UniMap</h2>
             </div>
           </div>
 

@@ -5,11 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QrCodeIcon, NavigationIcon, ShareIcon, DownloadIcon, MapPinIcon } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import LocationPicker from "@/components/LocationPicker";
 
 const QRNavigate = () => {
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
 
   const handleGenerateQR = () => {
     if (fromLocation && toLocation) {
@@ -53,12 +56,23 @@ const QRNavigate = () => {
                         <MapPinIcon className="h-4 w-4 text-primary" />
                         From Location
                       </label>
-                      <Input
-                        placeholder="Enter starting point (e.g., Main Library)"
-                        value={fromLocation}
-                        onChange={(e) => setFromLocation(e.target.value)}
-                        className="bg-secondary/50 border-0 focus:bg-background transition-colors h-12"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter starting point (e.g., Main Library)"
+                          value={fromLocation}
+                          onChange={(e) => setFromLocation(e.target.value)}
+                          className="bg-secondary/50 border-0 focus:bg-background transition-colors h-12 flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-12 w-12 bg-secondary/50 border-0 hover:bg-secondary transition-colors"
+                          onClick={() => setShowFromPicker(true)}
+                        >
+                          <MapPinIcon className="h-4 w-4 text-primary" />
+                        </Button>
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
@@ -66,12 +80,23 @@ const QRNavigate = () => {
                         <NavigationIcon className="h-4 w-4 text-primary" />
                         To Location
                       </label>
-                      <Input
-                        placeholder="Enter destination (e.g., Student Union)"
-                        value={toLocation}
-                        onChange={(e) => setToLocation(e.target.value)}
-                        className="bg-secondary/50 border-0 focus:bg-background transition-colors h-12"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter destination (e.g., Student Union)"
+                          value={toLocation}
+                          onChange={(e) => setToLocation(e.target.value)}
+                          className="bg-secondary/50 border-0 focus:bg-background transition-colors h-12 flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-12 w-12 bg-secondary/50 border-0 hover:bg-secondary transition-colors"
+                          onClick={() => setShowToPicker(true)}
+                        >
+                          <MapPinIcon className="h-4 w-4 text-primary" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -200,6 +225,21 @@ const QRNavigate = () => {
           </div>
         </div>
       </main>
+      
+      {/* Location Pickers */}
+      <LocationPicker
+        isOpen={showFromPicker}
+        onClose={() => setShowFromPicker(false)}
+        onLocationSelect={setFromLocation}
+        title="Select Starting Location"
+      />
+      
+      <LocationPicker
+        isOpen={showToPicker}
+        onClose={() => setShowToPicker(false)}
+        onLocationSelect={setToLocation}
+        title="Select Destination"
+      />
       
       <Footer />
     </div>
