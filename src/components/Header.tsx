@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapIcon, CalendarIcon, QrCodeIcon, SearchIcon } from "lucide-react";
+import { MapIcon, CalendarIcon, QrCodeIcon, SearchIcon, LogOutIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -11,6 +12,11 @@ interface HeaderProps {
 const Header = ({ isAuthenticated = false, userRole }: HeaderProps) => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const { user, logout } = useAuth();
+  
+  // Use context user if available, otherwise use props
+  const currentUser = user || { role: userRole };
+  const isLoggedIn = !!user || isAuthenticated;
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
@@ -78,15 +84,28 @@ const Header = ({ isAuthenticated = false, userRole }: HeaderProps) => {
 
         {/* Auth Buttons */}
         <div className="flex items-center space-x-2 ml-4">
-          {isAuthenticated ? (
-            <Button 
-              variant="outline" 
-              size="sm"
-              asChild
-              className="bg-gradient-primary text-white border-0 hover:shadow-glow transition-all"
-            >
-              <Link to={`/${userRole}-dashboard`}>Dashboard</Link>
-            </Button>
+          {isLoggedIn ? (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">
+                Welcome, {user?.name || 'User'}
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                asChild
+                className="bg-gradient-primary text-white border-0 hover:shadow-glow transition-all"
+              >
+                <Link to={`/${currentUser?.role}-dashboard`}>Dashboard</Link>
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={logout}
+                className="hover:bg-secondary/50 transition-colors"
+              >
+                <LogOutIcon className="h-4 w-4" />
+              </Button>
+            </div>
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>

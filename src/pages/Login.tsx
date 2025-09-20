@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EyeIcon, EyeOffIcon, UserIcon, LockIcon, GraduationCapIcon, MailIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -11,20 +12,24 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setError("");
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Login attempt:", { email, password });
-      setIsLoading(false);
-      // Redirect to student dashboard
-      navigate("/student-dashboard");
-    }, 2000);
+    const success = await login(email, password);
+    
+    if (success) {
+      // Redirect based on user role
+      const role = email.includes('admin') ? 'admin' : 
+                   email.includes('host') ? 'host' : 'student';
+      navigate(`/${role}-dashboard`);
+    } else {
+      setError("Invalid email or password. Please try again.");
+    }
   };
 
   return (
@@ -79,6 +84,12 @@ const Login = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <form onSubmit={handleLogin} className="space-y-4">
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                      {error}
+                    </div>
+                  )}
+                  
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <MailIcon className="h-4 w-4 text-primary" />
@@ -172,6 +183,22 @@ const Login = () => {
                       <Button variant="outline" size="sm" asChild className="flex-1 hover:bg-secondary/50 transition-colors">
                         <Link to="/events">Browse Events</Link>
                       </Button>
+                    </div>
+                  </div>
+
+                  {/* Demo Accounts */}
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-medium mb-3">Demo Accounts (Click to login):</p>
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Student:</strong> alex.student@university.edu / password123
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Host:</strong> sarah.host@university.edu / password123
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Admin:</strong> michael.admin@university.edu / password123
+                      </div>
                     </div>
                   </div>
                 </div>

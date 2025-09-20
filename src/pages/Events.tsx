@@ -3,251 +3,437 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CalendarIcon, MapPinIcon, ClockIcon, UsersIcon, SearchIcon, FilterIcon, HeartIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  CalendarIcon, 
+  MapPinIcon, 
+  ClockIcon, 
+  UsersIcon, 
+  SearchIcon, 
+  FilterIcon,
+  HeartIcon,
+  ShareIcon,
+  StarIcon,
+  MapIcon,
+  CheckCircleIcon
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import LocationPicker from "@/components/LocationPicker";
 
 const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-
-  const categories = [
-    { id: "all", name: "All Events" },
-    { id: "academic", name: "Academic" },
-    { id: "social", name: "Social" },
-    { id: "sports", name: "Sports" },
-    { id: "career", name: "Career" },
-    { id: "cultural", name: "Cultural" },
-  ];
+  const [interestedEvents, setInterestedEvents] = useState<number[]>([]);
+  const [enrolledEvents, setEnrolledEvents] = useState<number[]>([]);
 
   const events = [
     {
       id: 1,
-      title: "Computer Science Career Fair",
-      description: "Meet with top tech companies and explore internship opportunities in computer science and engineering.",
-      date: "March 15, 2024",
-      time: "2:00 PM - 6:00 PM",
-      location: "Student Union Ballroom",
-      category: "career",
-      attendees: 150,
-      image: "💼",
+      title: "Machine Learning Workshop",
+      description: "Learn the fundamentals of machine learning with hands-on projects and real-world applications.",
+      date: "2024-01-20",
+      time: "2:00 PM - 5:00 PM",
+      location: "Science Building Room 201",
+      category: "academic",
+      attendees: 45,
+      maxAttendees: 60,
+      price: "Free",
+      organizer: "Computer Science Department",
+      image: "🧠",
+      rating: 4.8,
+      tags: ["Technology", "Workshop", "Free"]
     },
     {
       id: 2,
       title: "Spring Music Festival",
-      description: "Annual spring celebration featuring local bands, food trucks, and community activities.",
-      date: "March 20, 2024",
+      description: "Join us for a day of live music, food trucks, and campus community celebration.",
+      date: "2024-01-25",
       time: "12:00 PM - 8:00 PM",
       location: "Campus Quad",
       category: "cultural",
-      attendees: 500,
+      attendees: 120,
+      maxAttendees: 200,
+      price: "$5",
+      organizer: "Student Activities Board",
       image: "🎵",
+      rating: 4.6,
+      tags: ["Music", "Festival", "Food"]
     },
     {
       id: 3,
-      title: "Machine Learning Workshop",
-      description: "Hands-on workshop covering the fundamentals of machine learning and AI applications.",
-      date: "March 18, 2024",
-      time: "3:00 PM - 5:00 PM",
-      location: "Science Building Room 201",
-      category: "academic",
-      attendees: 45,
-      image: "🤖",
-    },
-    {
-      id: 4,
       title: "Basketball Championship Finals",
-      description: "Cheer on our university team in the championship finals. Free admission for students!",
-      date: "March 22, 2024",
+      description: "Watch the final game of the campus basketball tournament. Free admission for students.",
+      date: "2024-01-22",
       time: "7:00 PM - 9:00 PM",
       location: "Sports Arena",
       category: "sports",
-      attendees: 2000,
+      attendees: 300,
+      maxAttendees: 500,
+      price: "Free",
+      organizer: "Athletics Department",
       image: "🏀",
+      rating: 4.9,
+      tags: ["Sports", "Championship", "Free"]
+    },
+    {
+      id: 4,
+      title: "Art Exhibition Opening",
+      description: "View the latest student artwork and meet the artists behind these creative pieces.",
+      date: "2024-01-18",
+      time: "6:00 PM - 9:00 PM",
+      location: "Arts Center Gallery",
+      category: "cultural",
+      attendees: 25,
+      maxAttendees: 50,
+      price: "Free",
+      organizer: "Art Department",
+      image: "🎨",
+      rating: 4.7,
+      tags: ["Art", "Exhibition", "Free"]
     },
     {
       id: 5,
-      title: "International Food Festival",
-      description: "Taste cuisines from around the world prepared by international student organizations.",
-      date: "March 25, 2024",
-      time: "11:00 AM - 4:00 PM",
-      location: "Dining Hall Plaza",
-      category: "cultural",
-      attendees: 300,
-      image: "🌍",
+      title: "Career Fair 2024",
+      description: "Connect with top employers and explore internship and job opportunities.",
+      date: "2024-01-30",
+      time: "10:00 AM - 4:00 PM",
+      location: "Student Union Ballroom",
+      category: "professional",
+      attendees: 200,
+      maxAttendees: 300,
+      price: "Free",
+      organizer: "Career Services",
+      image: "💼",
+      rating: 4.5,
+      tags: ["Career", "Networking", "Free"]
     },
     {
       id: 6,
-      title: "Study Abroad Information Session",
-      description: "Learn about study abroad opportunities and scholarship programs available to students.",
-      date: "March 28, 2024",
-      time: "4:00 PM - 5:30 PM",
-      location: "International Center",
+      title: "Environmental Sustainability Talk",
+      description: "Learn about sustainable practices and how to make a positive impact on the environment.",
+      date: "2024-01-28",
+      time: "3:00 PM - 4:30 PM",
+      location: "Environmental Science Building",
       category: "academic",
-      attendees: 80,
-      image: "✈️",
-    },
+      attendees: 35,
+      maxAttendees: 80,
+      price: "Free",
+      organizer: "Environmental Studies",
+      image: "🌱",
+      rating: 4.4,
+      tags: ["Environment", "Education", "Free"]
+    }
+  ];
+
+  const categories = [
+    { value: "all", label: "All Categories" },
+    { value: "academic", label: "Academic" },
+    { value: "cultural", label: "Cultural" },
+    { value: "sports", label: "Sports" },
+    { value: "professional", label: "Professional" },
+    { value: "social", label: "Social" }
   ];
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchQuery.toLowerCase());
+                         event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         event.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesLocation = !selectedLocation || event.location.toLowerCase().includes(selectedLocation.toLowerCase());
+    
+    return matchesSearch && matchesCategory && matchesLocation;
   });
 
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      academic: "bg-blue-100 text-blue-800",
-      social: "bg-green-100 text-green-800",
-      sports: "bg-orange-100 text-orange-800",
-      career: "bg-purple-100 text-purple-800",
-      cultural: "bg-pink-100 text-pink-800",
-    };
-    return colors[category as keyof typeof colors] || "bg-gray-100 text-gray-800";
+  const handleInterestToggle = (eventId: number) => {
+    setInterestedEvents(prev => 
+      prev.includes(eventId) 
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId]
+    );
+  };
+
+  const handleEnrollmentToggle = (eventId: number) => {
+    setEnrolledEvents(prev => 
+      prev.includes(eventId) 
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId]
+    );
+  };
+
+  const handleLocationSelect = (location: string) => {
+    setSelectedLocation(location);
+    setShowLocationPicker(false);
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <main className="flex-1">
-        {/* Header Section */}
-        <section className="py-12 bg-gradient-secondary">
-          <div className="container">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold mb-4">Campus Events</h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Discover exciting events happening around campus. Connect with your community and never miss out on what matters to you.
-              </p>
-            </div>
-            
-            {/* Search and Filters */}
-            <div className="max-w-4xl mx-auto space-y-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search events..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-background border-0 shadow-card focus:shadow-elevated transition-all"
-                  />
-                </div>
-                <Dialog open={showLocationPicker} onOpenChange={setShowLocationPicker}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="bg-background hover:bg-secondary/50 transition-colors">
-                      <MapPinIcon className="mr-2 h-4 w-4" />
-                      Select Location
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Select Location from Map</DialogTitle>
-                    </DialogHeader>
-                    <div className="h-64 bg-gradient-to-br from-secondary to-accent/20 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <MapPinIcon className="h-12 w-12 text-primary mx-auto mb-2" />
-                        <p className="text-muted-foreground">Interactive map location picker</p>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              
-              {/* Category Filters */}
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
-                  <Button
-                    key={category.id}
-                    variant={selectedCategory === category.id ? "default" : "outline"}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={selectedCategory === category.id ? 
-                      "bg-gradient-primary border-0 hover:shadow-glow transition-all" : 
-                      "bg-background hover:bg-secondary/50 transition-colors"
-                    }
-                  >
-                    {category.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
+      <main className="flex-1 py-8 bg-gradient-secondary">
+        <div className="container">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-4">Campus Events</h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Discover exciting events happening around campus and connect with your university community.
+            </p>
           </div>
-        </section>
 
-        {/* Events Grid */}
-        <section className="py-12">
-          <div className="container">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEvents.map((event) => (
-                <Card key={event.id} className="group hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 border-0 shadow-card overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="text-4xl mb-2">{event.image}</div>
-                      <Badge className={getCategoryColor(event.category)}>
-                        {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {event.description}
-                    </p>
-                    
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center text-muted-foreground">
-                        <CalendarIcon className="h-4 w-4 mr-2 text-primary" />
-                        {event.date}
-                      </div>
-                      <div className="flex items-center text-muted-foreground">
-                        <ClockIcon className="h-4 w-4 mr-2 text-primary" />
-                        {event.time}
-                      </div>
-                      <div className="flex items-center text-muted-foreground">
-                        <MapPinIcon className="h-4 w-4 mr-2 text-primary" />
-                        {event.location}
-                      </div>
-                      <div className="flex items-center text-muted-foreground">
-                        <UsersIcon className="h-4 w-4 mr-2 text-primary" />
-                        {event.attendees} attending
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 pt-2">
-                      <Button 
-                        className="flex-1 bg-gradient-primary border-0 hover:shadow-glow transition-all duration-300"
-                        onClick={() => {
-                          // For guest users, this would redirect to login
-                          console.log("Interest in event:", event.id);
-                        }}
-                      >
-                        <HeartIcon className="mr-2 h-4 w-4" />
-                        Interested
-                      </Button>
-                      <Button variant="outline" size="icon" className="hover:bg-secondary/50 transition-colors">
-                        <MapPinIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            
-            {filteredEvents.length === 0 && (
-              <div className="text-center py-12">
-                <CalendarIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No events found</h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search criteria or check back later for new events.
-                </p>
-              </div>
-            )}
+          {/* Search and Filters */}
+          <div className="mb-8">
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* Search */}
+                  <div className="relative">
+                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search events..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 bg-secondary/50 border-0 focus:bg-background transition-colors"
+                    />
+                  </div>
+
+                  {/* Category Filter */}
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger className="bg-secondary/50 border-0 focus:bg-background transition-colors">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Location Filter */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Filter by location..."
+                      value={selectedLocation}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      className="bg-secondary/50 border-0 focus:bg-background transition-colors"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowLocationPicker(true)}
+                      className="bg-secondary/50 border-0 hover:bg-secondary transition-colors"
+                    >
+                      <MapIcon className="h-4 w-4 text-primary" />
+                    </Button>
+                  </div>
+
+                  {/* Clear Filters */}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedCategory("all");
+                      setSelectedLocation("");
+                    }}
+                    className="bg-secondary/50 border-0 hover:bg-secondary transition-colors"
+                  >
+                    <FilterIcon className="mr-2 h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </section>
+
+          {/* Events Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredEvents.map((event) => (
+              <Card key={event.id} className="border-0 shadow-card hover:shadow-elevated transition-all duration-300 group">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{event.image}</span>
+                      <div>
+                        <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                          {event.title}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">{event.organizer}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <StarIcon className="h-4 w-4 text-yellow-500 fill-current" />
+                      <span className="text-sm font-medium">{event.rating}</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+                  
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {event.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {/* Event Details */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>{event.date}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>{event.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPinIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="truncate">{event.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <UsersIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>{event.attendees}/{event.maxAttendees} attendees</span>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Attendance</span>
+                      <span>{Math.round((event.attendees / event.maxAttendees) * 100)}%</span>
+                    </div>
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div 
+                        className="bg-primary h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${(event.attendees / event.maxAttendees) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Price */}
+                  <div className="text-center">
+                    <Badge variant={event.price === "Free" ? "default" : "outline"} className="text-sm">
+                      {event.price === "Free" ? "Free Event" : `$${event.price}`}
+                    </Badge>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleInterestToggle(event.id)}
+                        className={`flex-1 ${
+                          interestedEvents.includes(event.id)
+                            ? 'bg-primary text-white hover:bg-primary/90'
+                            : 'hover:bg-secondary/50'
+                        }`}
+                      >
+                        <HeartIcon className={`mr-2 h-4 w-4 ${
+                          interestedEvents.includes(event.id) ? 'fill-current' : ''
+                        }`} />
+                        {interestedEvents.includes(event.id) ? 'Interested' : 'Mark Interest'}
+                      </Button>
+                      <Button variant="outline" size="sm" className="hover:bg-secondary/50">
+                        <ShareIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    {/* Enrollment Button */}
+                    <Button
+                      size="sm"
+                      onClick={() => handleEnrollmentToggle(event.id)}
+                      className={`w-full ${
+                        enrolledEvents.includes(event.id)
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-gradient-primary border-0 hover:shadow-glow transition-all duration-300'
+                      }`}
+                    >
+                      {enrolledEvents.includes(event.id) ? (
+                        <>
+                          <CheckCircleIcon className="mr-2 h-4 w-4" />
+                          Enrolled
+                        </>
+                      ) : (
+                        <>
+                          <UsersIcon className="mr-2 h-4 w-4" />
+                          Enroll Now
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* No Results */}
+          {filteredEvents.length === 0 && (
+            <div className="text-center py-12">
+              <CalendarIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+              <h3 className="text-xl font-semibold mb-2">No events found</h3>
+              <p className="text-muted-foreground mb-4">
+                Try adjusting your search criteria or check back later for new events.
+              </p>
+              <Button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategory("all");
+                  setSelectedLocation("");
+                }}
+                variant="outline"
+              >
+                Clear All Filters
+              </Button>
+            </div>
+          )}
+
+          {/* Call to Action */}
+          <div className="mt-12 text-center">
+            <Card className="border-0 shadow-card bg-gradient-primary text-white">
+              <CardContent className="p-8">
+                <h2 className="text-2xl font-bold mb-4">Want to Host an Event?</h2>
+                <p className="text-lg opacity-90 mb-6 max-w-2xl mx-auto">
+                  Join our community of event hosts and create memorable experiences for your fellow students.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    className="border-white text-primary bg-white hover:bg-white/90 transition-colors"
+                    asChild
+                  >
+                    <Link to="/register">Become a Host</Link>
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    className="border-white text-white hover:bg-white/10 backdrop-blur-sm transition-colors"
+                    asChild
+                  >
+                    <Link to="/login">Sign In</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </main>
+
+      {/* Location Picker */}
+      <LocationPicker
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onLocationSelect={handleLocationSelect}
+        title="Select Event Location"
+      />
       
       <Footer />
     </div>

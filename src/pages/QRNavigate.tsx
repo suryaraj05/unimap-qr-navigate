@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QrCodeIcon, NavigationIcon, ShareIcon, DownloadIcon, MapPinIcon } from "lucide-react";
+import QRCode from "react-qr-code";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LocationPicker from "@/components/LocationPicker";
@@ -13,6 +14,70 @@ const QRNavigate = () => {
   const [showQRCode, setShowQRCode] = useState(false);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
+  const [fromSuggestions, setFromSuggestions] = useState<string[]>([]);
+  const [toSuggestions, setToSuggestions] = useState<string[]>([]);
+  const [showFromSuggestions, setShowFromSuggestions] = useState(false);
+  const [showToSuggestions, setShowToSuggestions] = useState(false);
+
+  // Location suggestions data
+  const locationSuggestions = [
+    "Main Library",
+    "Student Union",
+    "Dining Hall",
+    "Gym & Recreation",
+    "Science Building",
+    "Arts Center",
+    "Medical Center",
+    "Parking Lot A",
+    "Computer Science Building",
+    "Business School",
+    "Engineering Building",
+    "Dormitory A",
+    "Dormitory B",
+    "Campus Bookstore",
+    "Student Center",
+    "Cafeteria",
+    "Sports Complex",
+    "Research Lab",
+    "Administration Building",
+    "Parking Garage"
+  ];
+
+  const handleLocationInput = (value: string, type: 'from' | 'to') => {
+    if (type === 'from') {
+      setFromLocation(value);
+      if (value.length > 0) {
+        const filtered = locationSuggestions.filter(loc => 
+          loc.toLowerCase().includes(value.toLowerCase())
+        ).slice(0, 5);
+        setFromSuggestions(filtered);
+        setShowFromSuggestions(true);
+      } else {
+        setShowFromSuggestions(false);
+      }
+    } else {
+      setToLocation(value);
+      if (value.length > 0) {
+        const filtered = locationSuggestions.filter(loc => 
+          loc.toLowerCase().includes(value.toLowerCase())
+        ).slice(0, 5);
+        setToSuggestions(filtered);
+        setShowToSuggestions(true);
+      } else {
+        setShowToSuggestions(false);
+      }
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string, type: 'from' | 'to') => {
+    if (type === 'from') {
+      setFromLocation(suggestion);
+      setShowFromSuggestions(false);
+    } else {
+      setToLocation(suggestion);
+      setShowToSuggestions(false);
+    }
+  };
 
   const handleGenerateQR = () => {
     if (fromLocation && toLocation) {
@@ -56,22 +121,43 @@ const QRNavigate = () => {
                         <MapPinIcon className="h-4 w-4 text-primary" />
                         From Location
                       </label>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Enter starting point (e.g., Main Library)"
-                          value={fromLocation}
-                          onChange={(e) => setFromLocation(e.target.value)}
-                          className="bg-secondary/50 border-0 focus:bg-background transition-colors h-12 flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-12 w-12 bg-secondary/50 border-0 hover:bg-secondary transition-colors"
-                          onClick={() => setShowFromPicker(true)}
-                        >
-                          <MapPinIcon className="h-4 w-4 text-primary" />
-                        </Button>
+                      <div className="relative">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Enter starting point (e.g., Main Library)"
+                            value={fromLocation}
+                            onChange={(e) => handleLocationInput(e.target.value, 'from')}
+                            onFocus={() => fromLocation.length > 0 && setShowFromSuggestions(true)}
+                            className="bg-secondary/50 border-0 focus:bg-background transition-colors h-12 flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-12 bg-secondary/50 border-0 hover:bg-secondary transition-colors"
+                            onClick={() => setShowFromPicker(true)}
+                          >
+                            <MapPinIcon className="h-4 w-4 text-primary" />
+                          </Button>
+                        </div>
+                        
+                        {/* From Suggestions Dropdown */}
+                        {showFromSuggestions && fromSuggestions.length > 0 && (
+                          <div className="absolute top-full left-0 right-12 mt-1 bg-background border shadow-elevated rounded-lg z-10 max-h-48 overflow-y-auto">
+                            {fromSuggestions.map((suggestion, index) => (
+                              <div
+                                key={index}
+                                className="px-4 py-2 hover:bg-secondary/50 cursor-pointer text-sm border-b last:border-b-0"
+                                onClick={() => handleSuggestionClick(suggestion, 'from')}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <MapPinIcon className="h-4 w-4 text-muted-foreground" />
+                                  {suggestion}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     
@@ -80,22 +166,43 @@ const QRNavigate = () => {
                         <NavigationIcon className="h-4 w-4 text-primary" />
                         To Location
                       </label>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Enter destination (e.g., Student Union)"
-                          value={toLocation}
-                          onChange={(e) => setToLocation(e.target.value)}
-                          className="bg-secondary/50 border-0 focus:bg-background transition-colors h-12 flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-12 w-12 bg-secondary/50 border-0 hover:bg-secondary transition-colors"
-                          onClick={() => setShowToPicker(true)}
-                        >
-                          <MapPinIcon className="h-4 w-4 text-primary" />
-                        </Button>
+                      <div className="relative">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Enter destination (e.g., Student Union)"
+                            value={toLocation}
+                            onChange={(e) => handleLocationInput(e.target.value, 'to')}
+                            onFocus={() => toLocation.length > 0 && setShowToSuggestions(true)}
+                            className="bg-secondary/50 border-0 focus:bg-background transition-colors h-12 flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-12 bg-secondary/50 border-0 hover:bg-secondary transition-colors"
+                            onClick={() => setShowToPicker(true)}
+                          >
+                            <MapPinIcon className="h-4 w-4 text-primary" />
+                          </Button>
+                        </div>
+                        
+                        {/* To Suggestions Dropdown */}
+                        {showToSuggestions && toSuggestions.length > 0 && (
+                          <div className="absolute top-full left-0 right-12 mt-1 bg-background border shadow-elevated rounded-lg z-10 max-h-48 overflow-y-auto">
+                            {toSuggestions.map((suggestion, index) => (
+                              <div
+                                key={index}
+                                className="px-4 py-2 hover:bg-secondary/50 cursor-pointer text-sm border-b last:border-b-0"
+                                onClick={() => handleSuggestionClick(suggestion, 'to')}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <MapPinIcon className="h-4 w-4 text-muted-foreground" />
+                                  {suggestion}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -130,15 +237,12 @@ const QRNavigate = () => {
                   <div className="bg-white p-8 rounded-lg mx-auto w-fit shadow-card">
                     <div className="w-64 h-64 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg flex items-center justify-center">
                       <div className="text-center">
-                        <div className="grid grid-cols-8 gap-1 w-32 h-32 mx-auto mb-4">
-                          {Array.from({ length: 64 }).map((_, i) => (
-                            <div 
-                              key={i} 
-                              className={`w-3 h-3 ${Math.random() > 0.5 ? 'bg-foreground' : 'bg-transparent'} rounded-sm`}
-                            />
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground">Scan with camera</p>
+                        <QRCode
+                          value={`unimap://navigate?from=${encodeURIComponent(fromLocation)}&to=${encodeURIComponent(toLocation)}`}
+                          size={200}
+                          style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                        />
+                        <p className="text-xs text-muted-foreground mt-2">Scan with camera</p>
                       </div>
                     </div>
                   </div>
