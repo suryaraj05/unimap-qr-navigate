@@ -20,7 +20,7 @@ const Landing = () => {
         />
         <div className="relative container text-center text-white">
           <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-            Navigate Your University<br />
+            Navigate RGUKT Basar<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-warm-orange">
               Like Never Before
             </span>
@@ -43,10 +43,10 @@ const Landing = () => {
               size="lg" 
               variant="outline" 
               asChild
-              className="border-white text-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300"
+              className="border-white/80 text-white bg-white/15 hover:bg-white/25 backdrop-blur-sm transition-all duration-300 shadow-elevated"
             >
               <Link to="/events">
-                <CalendarIcon className="mr-2 h-5 w-5" />
+                <CalendarIcon className="mr-2 h-5 w-5"/>
                 Discover Events
               </Link>
             </Button>

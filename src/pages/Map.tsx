@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,9 @@ import { NavigationIcon, MapPinIcon, RouteIcon, QrCodeIcon, SearchIcon, PlusIcon
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LocationPicker from "@/components/LocationPicker";
+import CampusMap from "@/components/CampusMap";
+import { listPlaces, listEvents, type PlaceDoc, type EventDoc } from "@/services/firestore";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const Map = () => {
   const [fromLocation, setFromLocation] = useState("");
@@ -16,13 +19,43 @@ const Map = () => {
   const [showToPicker, setShowToPicker] = useState(false);
   const [mapZoom, setMapZoom] = useState(100);
   const [mapLayers, setMapLayers] = useState("default");
+  const [locateRequest, setLocateRequest] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [places, setPlaces] = useState<(PlaceDoc & { id: string })[]>([]);
+  const [showEventsModal, setShowEventsModal] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsForPlace, setEventsForPlace] = useState<(EventDoc & { id?: string })[]>([]);
+  const [eventsPlaceName, setEventsPlaceName] = useState<string>("");
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const fromPlace: PlaceDoc | null = useMemo(() => places.find(p => p.name === fromLocation) || null, [fromLocation, places]);
+  const toPlace: PlaceDoc | null = useMemo(() => places.find(p => p.name === toLocation) || null, [toLocation, places]);
+
+  useEffect(() => {
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    const nav = searchParams.get("nav");
+    if (from) setFromLocation(from);
+    if (to) setToLocation(to);
+    if (nav === '1') setShowNavigationDialog(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const remote = await listPlaces();
+        setPlaces(remote);
+      } catch (e) {
+        setPlaces([]);
+      }
+    })();
+  }, []);
 
   const handleGenerateRoute = () => {
     if (fromLocation && toLocation) {
-      // This would typically generate a QR code or navigate to QR display page
-      console.log(`Generating route from ${fromLocation} to ${toLocation}`);
+      // Close dialog; route is drawn by CampusMap from current from/to
       setShowNavigationDialog(false);
     }
   };
@@ -35,18 +68,7 @@ const Map = () => {
     }
   };
 
-  const campusLocations = [
-    { name: "Main Library", type: "Academic", icon: "📚", position: { top: "20%", left: "25%" } },
-    { name: "Student Union", type: "Social", icon: "🏢", position: { top: "35%", left: "60%" } },
-    { name: "Dining Hall", type: "Food", icon: "🍕", position: { top: "55%", left: "40%" } },
-    { name: "Gym", type: "Fitness", icon: "🏃", position: { top: "70%", left: "75%" } },
-    { name: "Science Building", type: "Academic", icon: "🔬", position: { top: "25%", left: "80%" } },
-    { name: "Arts Center", type: "Academic", icon: "🎨", position: { top: "45%", left: "15%" } },
-    { name: "Parking A", type: "Parking", icon: "🅿️", position: { top: "80%", left: "30%" } },
-    { name: "Medical Center", type: "Health", icon: "🏥", position: { top: "65%", left: "65%" } },
-  ];
-
-  const filteredLocations = campusLocations.filter(location =>
+  const filteredLocations = places.filter(location =>
     location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     location.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -56,143 +78,38 @@ const Map = () => {
       <Header />
       
       <main className="flex-1 relative">
-        {/* Google Maps-like Map Container */}
+        {/* Live Leaflet Map */}
         <div className="relative h-[calc(100vh-4rem)] bg-background">
-          {/* Interactive Map */}
           <div className="absolute inset-0 overflow-hidden">
-            {/* Realistic Map Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-green-100 via-green-50 to-blue-50">
-              {/* Campus Buildings and Roads */}
-              <div className="absolute inset-0">
-                {/* Main Campus Road */}
-                <div className="absolute top-1/2 left-0 right-0 h-8 bg-gray-400 opacity-80"></div>
-                <div className="absolute left-1/2 top-0 bottom-0 w-8 bg-gray-400 opacity-80"></div>
-                
-                {/* Side Roads */}
-                <div className="absolute top-1/4 left-0 right-0 h-4 bg-gray-300 opacity-60"></div>
-                <div className="absolute top-3/4 left-0 right-0 h-4 bg-gray-300 opacity-60"></div>
-                <div className="absolute left-1/4 top-0 bottom-0 w-4 bg-gray-300 opacity-60"></div>
-                <div className="absolute left-3/4 top-0 bottom-0 w-4 bg-gray-300 opacity-60"></div>
-                
-                {/* Campus Buildings */}
-                <div className="absolute top-[15%] left-[20%] w-16 h-12 bg-gray-600 rounded-sm"></div>
-                <div className="absolute top-[25%] left-[60%] w-20 h-16 bg-gray-600 rounded-sm"></div>
-                <div className="absolute top-[45%] left-[15%] w-14 h-10 bg-gray-600 rounded-sm"></div>
-                <div className="absolute top-[55%] left-[70%] w-18 h-14 bg-gray-600 rounded-sm"></div>
-                <div className="absolute top-[70%] left-[30%] w-16 h-12 bg-gray-600 rounded-sm"></div>
-                <div className="absolute top-[80%] left-[60%] w-12 h-8 bg-gray-600 rounded-sm"></div>
-                
-                {/* Parking Lots */}
-                <div className="absolute top-[10%] left-[5%] w-8 h-6 bg-yellow-200 border border-yellow-400"></div>
-                <div className="absolute top-[75%] left-[80%] w-10 h-8 bg-yellow-200 border border-yellow-400"></div>
-                
-                {/* Green Spaces */}
-                <div className="absolute top-[5%] left-[40%] w-12 h-8 bg-green-300 rounded-full opacity-70"></div>
-                <div className="absolute top-[60%] left-[45%] w-16 h-12 bg-green-300 rounded-full opacity-70"></div>
-                
-                {/* Sidewalks */}
-                <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200"></div>
-                <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gray-200"></div>
-              </div>
-            </div>
-            
-            {/* Campus Location Pins */}
-            {filteredLocations.map((location, index) => (
-              <div
-                key={location.name}
-                className={`absolute transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer ${
-                  selectedLocation === location.name ? 'scale-125 z-10' : ''
-                }`}
-                style={{
-                  top: location.position.top,
-                  left: location.position.left,
-                }}
-                onClick={() => setSelectedLocation(selectedLocation === location.name ? null : location.name)}
-              >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-elevated transition-colors ${
-                  selectedLocation === location.name 
-                    ? 'bg-warm-orange animate-pulse' 
-                    : 'bg-university-teal hover:bg-university-blue'
-                }`}>
-                  {location.icon}
-                </div>
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium whitespace-nowrap bg-background/90 px-2 py-1 rounded shadow-card">
-                  {location.name}
-                </div>
-                {selectedLocation === location.name && (
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-8 bg-background border shadow-elevated rounded-lg p-4 min-w-64 z-20">
-                    <div className="font-medium text-lg mb-2">{location.name}</div>
-                    <div className="text-sm text-muted-foreground mb-3">{location.type}</div>
-                    
-                    {/* Location Details */}
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <MapPinIcon className="h-4 w-4 text-primary" />
-                        <span>Building A, Floor 2</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ClockIcon className="h-4 w-4 text-primary" />
-                        <span>Open 8:00 AM - 10:00 PM</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <UsersIcon className="h-4 w-4 text-primary" />
-                        <span>Capacity: 200 people</span>
-                      </div>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFromLocation(location.name);
-                          setSelectedLocation(null);
-                        }}
-                        className="text-xs flex-1"
-                      >
-                        Set as Start
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setToLocation(location.name);
-                          setSelectedLocation(null);
-                        }}
-                        className="text-xs flex-1"
-                      >
-                        Set as End
-                      </Button>
-                    </div>
-                    
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedLocation(null);
-                      }}
-                      className="w-full mt-2 text-xs"
-                    >
-                      Close
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {/* UniMap Branding */}
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-card">
-              <h2 className="font-bold text-primary text-lg">UniMap</h2>
-            </div>
+            <CampusMap
+              places={places}
+              from={fromPlace}
+              to={toPlace}
+              mapZoom={mapZoom}
+              mapLayers={mapLayers as any}
+              locateRequest={locateRequest}
+              onSelectFrom={(p) => setFromLocation(p.name)}
+              onSelectTo={(p) => setToLocation(p.name)}
+              onViewEvents={async (p) => {
+                setEventsPlaceName(p.name);
+                setEventsLoading(true);
+                setShowEventsModal(true);
+                try {
+                  const all = await listEvents();
+                  setEventsForPlace(all.filter(e => e.location?.toLowerCase() === p.name.toLowerCase()));
+                } catch {
+                  setEventsForPlace([]);
+                } finally {
+                  setEventsLoading(false);
+                }
+              }}
+            />
           </div>
 
           {/* Map Controls */}
-          <div className="absolute top-4 right-4 z-10 space-y-2">
+          <div className="absolute top-4 right-4 z-[1500] space-y-2 pointer-events-none">
             {/* Zoom Controls */}
-            <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-card p-1">
+            <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-card p-1 pointer-events-auto">
               <Button
                 size="sm"
                 variant="ghost"
@@ -230,19 +147,20 @@ const Map = () => {
                 size="sm"
                 variant="ghost"
                 className="h-8 w-8 p-0"
+                onClick={() => setLocateRequest((x) => x + 1)}
               >
                 <CompassIcon className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          {/* Navigation Button */}
-          <div className="absolute bottom-4 right-4 z-10">
+          {/* Navigation Button (fixed) */}
+          <div className="fixed bottom-4 right-4 z-[2000] pointer-events-none">
             <Dialog open={showNavigationDialog} onOpenChange={setShowNavigationDialog}>
               <DialogTrigger asChild>
                 <Button 
                   size="lg"
-                  className="bg-gradient-primary border-0 hover:shadow-glow transition-all duration-300 shadow-elevated"
+                  className="bg-gradient-primary border-0 hover:shadow-glow transition-all duration-300 shadow-elevated pointer-events-auto"
                 >
                   <NavigationIcon className="mr-2 h-5 w-5" />
                   Navigate
@@ -301,16 +219,16 @@ const Map = () => {
                     className="w-full bg-gradient-primary border-0 hover:shadow-glow transition-all duration-300"
                     disabled={!fromLocation || !toLocation}
                   >
-                    <QrCodeIcon className="mr-2 h-4 w-4" />
-                    Generate QR for Route
+                    <RouteIcon className="mr-2 h-4 w-4" />
+                    Show Route
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
 
-          {/* Search Overlay */}
-          <div className="absolute top-4 left-4 z-10 w-80">
+          {/* Search Overlay (fixed) */}
+          <div className="fixed left-4 z-[2000] w-80" style={{ top: "5rem" }}>
             <Card className="shadow-elevated border-0">
               <CardContent className="p-4">
                 <div className="relative">
@@ -321,13 +239,33 @@ const Map = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 bg-secondary/50 border-0 focus:bg-background transition-colors"
                   />
+                  {searchQuery && filteredLocations.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-2 bg-background border rounded-md shadow-card z-[2200] max-h-64 overflow-y-auto">
+                      {filteredLocations.slice(0, 8).map((loc) => (
+                        <div key={loc.id} className="px-3 py-2 flex items-center justify-between hover:bg-secondary/50 cursor-pointer">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{loc.name}</div>
+                            <div className="text-xs text-muted-foreground truncate">{loc.type}</div>
+                          </div>
+                          <div className="flex gap-2 ml-2">
+                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setFromLocation(loc.name)}>
+                              From
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setToLocation(loc.name)}>
+                              To
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Campus Locations List */}
-          <div className="absolute bottom-4 left-4 z-10 w-80">
+          {/* Campus Locations List (fixed) */}
+          <div className="fixed bottom-4 left-4 z-[2000] w-80">
             <Card className="shadow-elevated border-0">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Popular Locations</CardTitle>
@@ -335,12 +273,13 @@ const Map = () => {
               <CardContent className="space-y-2 max-h-64 overflow-y-auto">
                 {filteredLocations.map((location) => (
                   <div 
-                    key={location.name}
+                    key={location.id}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
-                    onClick={() => setSelectedLocation(selectedLocation === location.name ? null : location.name)}
+                    onClick={() => {
+                      setFromLocation(location.name);
+                    }}
                   >
                     <div className="flex items-center space-x-3">
-                      <span className="text-xl">{location.icon}</span>
                       <div>
                         <div className="font-medium text-sm">{location.name}</div>
                         <div className="text-xs text-muted-foreground">{location.type}</div>
@@ -371,7 +310,57 @@ const Map = () => {
         onLocationSelect={(location) => handleLocationSelect(location, 'to')}
         title="Select Destination"
       />
-      
+
+      {/* Events at Place Modal */}
+      <Dialog open={showEventsModal} onOpenChange={setShowEventsModal}>
+        <DialogContent className="sm:max-w-3xl w-full max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              Events at {eventsPlaceName || 'Selected Place'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto text-base">
+            {eventsLoading ? (
+              <div className="p-4 text-base text-muted-foreground">Loading events...</div>
+            ) : eventsForPlace.length === 0 ? (
+              <div className="p-4 text-base text-muted-foreground">No events found at this location.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 p-2">
+                {eventsForPlace.map(ev => (
+                  <div
+                    key={(ev as any).id || ev.title}
+                    className="p-4 border rounded-lg shadow-card bg-background cursor-pointer hover:shadow-elevated transition-shadow"
+                    onClick={() => navigate(`/event/${(ev as any).id}`)}
+                  >
+                    {ev.image && (
+                      <img
+                        src={ev.image as any}
+                        alt={ev.title}
+                        className="w-full h-[40vh] max-h-[40vh] object-cover rounded-md mb-4"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-semibold text-lg">{ev.title}</div>
+                      <span className="text-sm px-2 py-1 rounded bg-secondary/60">{ev.category}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-2">{ev.date} • {ev.time}</div>
+                    <div className="text-base mb-2 line-clamp-4">{ev.description}</div>
+                    <div className="text-sm text-muted-foreground mb-3">{ev.location}</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">By {ev.organizer}</div>
+                      <Button size="default" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/event/${(ev as any).id}`); }}>
+                        View Details
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );

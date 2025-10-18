@@ -1,4 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { auth } from '@/services/firebase';
+import { getUserProfile, setUserProfile } from '@/services/firestore';
+import { createHostRequest } from '@/services/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
 
 interface User {
   id: string;
@@ -6,60 +10,19 @@ interface User {
   email: string;
   role: 'student' | 'host' | 'admin';
   avatar?: string;
+  hostApproved?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User | null>;
+  signup: (email: string, password: string, displayName: string, role: User['role']) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Fake user database
-const fakeUsers = [
-  {
-    id: '1',
-    name: 'Alex Thompson',
-    email: 'alex.student@university.edu',
-    password: 'password123',
-    role: 'student' as const,
-    avatar: '👨‍🎓'
-  },
-  {
-    id: '2',
-    name: 'Sarah Johnson',
-    email: 'sarah.host@university.edu',
-    password: 'password123',
-    role: 'host' as const,
-    avatar: '👩‍🏫'
-  },
-  {
-    id: '3',
-    name: 'Dr. Michael Chen',
-    email: 'michael.admin@university.edu',
-    password: 'password123',
-    role: 'admin' as const,
-    avatar: '👨‍💼'
-  },
-  {
-    id: '4',
-    name: 'Emily Davis',
-    email: 'emily.student@university.edu',
-    password: 'password123',
-    role: 'student' as const,
-    avatar: '👩‍🎓'
-  },
-  {
-    id: '5',
-    name: 'Prof. Lisa Wang',
-    email: 'lisa.host@university.edu',
-    password: 'password123',
-    role: 'host' as const,
-    avatar: '👩‍🏫'
-  }
-];
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -74,40 +37,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     setIsLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = fakeUsers.find(u => u.email === email && u.password === password);
-    
-    if (foundUser) {
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const fbUser = cred.user;
+      const profile = await getUserProfile(fbUser.uid);
+      const inferredRole = (email.includes('admin') ? 'admin' : email.includes('host') ? 'host' : 'student') as User['role'];
       const userData: User = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        role: foundUser.role,
-        avatar: foundUser.avatar
+        id: fbUser.uid,
+        name: fbUser.displayName || fbUser.email || 'User',
+        email: fbUser.email || email,
+        role: profile?.role || inferredRole,
+        hostApproved: profile?.hostApproved,
       };
-      
+      setUser(userData);
+      localStorage.setItem('unimap_user', JSON.stringify(userData));
+      setIsLoading(false);
+      return userData;
+    } catch (e) {
+      setIsLoading(false);
+      return null;
+    }
+  };
+
+  const signup = async (email: string, password: string, displayName: string, role: User['role']): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName });
+      }
+      const fbUser = cred.user;
+      await setUserProfile({ uid: fbUser.uid, email: fbUser.email || email, name: displayName || email, role, hostApproved: role === 'host' ? false : undefined });
+      if (role === 'host') {
+        try { await createHostRequest(fbUser.uid, displayName || email, fbUser.email || email); } catch {}
+      }
+      const userData: User = {
+        id: fbUser.uid,
+        name: displayName || email,
+        email: fbUser.email || email,
+        role,
+        hostApproved: role === 'host' ? false : undefined,
+      };
       setUser(userData);
       localStorage.setItem('unimap_user', JSON.stringify(userData));
       setIsLoading(false);
       return true;
+    } catch (e) {
+      setIsLoading(false);
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('unimap_user');
+    signOut(auth).finally(() => {
+      setUser(null);
+      localStorage.removeItem('unimap_user');
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

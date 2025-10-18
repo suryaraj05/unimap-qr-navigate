@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import QRCode from "react-qr-code";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LocationPicker from "@/components/LocationPicker";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const QRNavigate = () => {
   const [fromLocation, setFromLocation] = useState("");
@@ -18,6 +19,8 @@ const QRNavigate = () => {
   const [toSuggestions, setToSuggestions] = useState<string[]>([]);
   const [showFromSuggestions, setShowFromSuggestions] = useState(false);
   const [showToSuggestions, setShowToSuggestions] = useState(false);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // Location suggestions data
   const locationSuggestions = [
@@ -90,6 +93,14 @@ const QRNavigate = () => {
     setToLocation("");
     setShowQRCode(false);
   };
+
+  useEffect(() => {
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    if (from) setFromLocation(from);
+    if (to) setToLocation(to);
+    if (from && to) setShowQRCode(true);
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -219,7 +230,7 @@ const QRNavigate = () => {
                   </div>
 
                   <div className="text-center text-sm text-muted-foreground">
-                    <p>💡 Tip: QR codes can be scanned by any smartphone camera to instantly access directions</p>
+                    <p> Tip: QR codes can be scanned by any smartphone camera to instantly access directions</p>
                   </div>
                 </CardContent>
               </Card>
@@ -274,6 +285,7 @@ const QRNavigate = () => {
                       Create New Route
                     </Button>
                     <Button 
+                      onClick={() => navigate(`/map?from=${encodeURIComponent(fromLocation)}&to=${encodeURIComponent(toLocation)}`)}
                       className="flex-1 bg-gradient-primary border-0 hover:shadow-glow transition-all duration-300"
                     >
                       <NavigationIcon className="mr-2 h-4 w-4" />

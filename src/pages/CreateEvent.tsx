@@ -16,12 +16,18 @@ import {
   ArrowLeftIcon,
   SaveIcon
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LocationPicker from "@/components/LocationPicker";
+import { createEventDoc } from "@/services/firestore";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const CreateEvent = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -56,6 +62,21 @@ const CreateEvent = () => {
     }));
   };
 
+  // Guard: only approved hosts can access
+  if (!user || user.role !== 'host' || user.hostApproved !== true) {
+    // gentle redirect
+    setTimeout(() => navigate('/host-request'), 0);
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 py-8 bg-gradient-secondary/30">
+          <div className="container">Your host account is not active yet. Redirecting to host request...</div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       setFormData(prev => ({
@@ -84,13 +105,48 @@ const CreateEvent = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Creating event:", formData);
+    try {
+      await createEventDoc({
+        title: formData.title,
+        description: formData.description,
+        date: formData.date,
+        time: `${formData.startTime} - ${formData.endTime}`,
+        location: formData.location,
+        category: formData.category,
+        attendees: 0,
+        maxAttendees: Number(formData.maxAttendees) || 0,
+        price: formData.price ? `₹${formData.price}` : "Free",
+        organizer: user?.name || "Host",
+        // @ts-expect-error augment
+        createdBy: user?.id || "",
+        image: formData.image || undefined,
+        rating: 0,
+        tags: formData.tags,
+      });
       setIsLoading(false);
-      // Redirect to host dashboard or show success message
-    }, 2000);
+      // Confirmation toast
+      toast({
+        title: "Event created",
+        description: `${formData.title || "Your event"} has been created successfully.`,
+      });
+      // simple success UX: clear form
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        date: "",
+        startTime: "",
+        endTime: "",
+        location: "",
+        maxAttendees: "",
+        price: "",
+        tags: [],
+        image: "",
+      });
+    } catch (err) {
+      console.error("Failed to create event", err);
+      setIsLoading(false);
+    }
   };
 
   return (

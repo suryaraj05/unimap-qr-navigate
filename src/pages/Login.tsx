@@ -13,22 +13,20 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     
-    const success = await login(email, password);
+    const logged = await login(email, password);
     
-    if (success) {
-      // Redirect based on user role
-      const role = email.includes('admin') ? 'admin' : 
-                   email.includes('host') ? 'host' : 'student';
+    if (logged) {
+      const role = logged.role;
       navigate(`/${role}-dashboard`);
     } else {
-      setError("Invalid email or password. Please try again.");
+      setError("Invalid email or password. Please try again.")
     }
   };
 
@@ -183,22 +181,6 @@ const Login = () => {
                       <Button variant="outline" size="sm" asChild className="flex-1 hover:bg-secondary/50 transition-colors">
                         <Link to="/events">Browse Events</Link>
                       </Button>
-                    </div>
-                  </div>
-
-                  {/* Demo Accounts */}
-                  <div className="pt-4 border-t">
-                    <p className="text-sm font-medium mb-3">Demo Accounts (Click to login):</p>
-                    <div className="space-y-2">
-                      <div className="text-xs text-muted-foreground">
-                        <strong>Student:</strong> alex.student@university.edu / password123
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <strong>Host:</strong> sarah.host@university.edu / password123
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <strong>Admin:</strong> michael.admin@university.edu / password123
-                      </div>
                     </div>
                   </div>
                 </div>

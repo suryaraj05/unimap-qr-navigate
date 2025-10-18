@@ -1,26 +1,21 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MapPinIcon, SearchIcon, XIcon } from "lucide-react";
+import { listPlaces, type PlaceDoc } from "@/services/firestore";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-interface Location {
-  id: string;
-  name: string;
-  type: string;
-  coordinates: { lat: number; lng: number };
-}
+// Fix Leaflet default marker icons (works with bundlers)
+import iconUrl from "leaflet/dist/images/marker-icon.png";
+import iconShadowUrl from "leaflet/dist/images/marker-shadow.png";
+const DefaultIcon = L.icon({ iconUrl, shadowUrl: iconShadowUrl, iconAnchor: [12, 41], popupAnchor: [1, -34] });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(L.Marker as any).prototype.options.icon = DefaultIcon;
 
-const campusLocations: Location[] = [
-  { id: "1", name: "Main Library", type: "Academic", coordinates: { lat: 40.7589, lng: -73.9851 } },
-  { id: "2", name: "Student Union", type: "Social", coordinates: { lat: 40.7614, lng: -73.9776 } },
-  { id: "3", name: "Dining Hall", type: "Food", coordinates: { lat: 40.7505, lng: -73.9934 } },
-  { id: "4", name: "Gym & Recreation", type: "Fitness", coordinates: { lat: 40.7560, lng: -73.9860 } },
-  { id: "5", name: "Science Building", type: "Academic", coordinates: { lat: 40.7580, lng: -73.9800 } },
-  { id: "6", name: "Arts Center", type: "Academic", coordinates: { lat: 40.7620, lng: -73.9820 } },
-  { id: "7", name: "Medical Center", type: "Health", coordinates: { lat: 40.7540, lng: -73.9900 } },
-  { id: "8", name: "Parking Lot A", type: "Parking", coordinates: { lat: 40.7590, lng: -73.9750 } },
-];
+type Location = PlaceDoc & { id: string };
 
 interface LocationPickerProps {
   isOpen: boolean;
@@ -32,14 +27,46 @@ interface LocationPickerProps {
 const LocationPicker = ({ isOpen, onClose, onLocationSelect, title = "Select Location" }: LocationPickerProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
 
-  const filteredLocations = campusLocations.filter(location =>
+  useEffect(() => {
+    (async () => {
+      try {
+        const places = await listPlaces();
+        setLocations(places as Location[]);
+      } catch (e) {
+        setLocations([]);
+      }
+    })();
+  }, []);
+
+  const filteredLocations = locations.filter(location =>
     location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     location.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const mapBounds = useMemo(() => {
+    const src = filteredLocations.length ? filteredLocations : locations;
+    if (!src.length) return null;
+    return L.latLngBounds(src.map(l => [l.lat, l.lng]) as [number, number][]);
+  }, [filteredLocations, locations]);
+
+  const FitView = () => {
+    const map = useMap();
+    useEffect(() => {
+      if (mapBounds) {
+        map.fitBounds(mapBounds.pad(0.1));
+      } else {
+        map.setView([18.8769, 77.9436], 16);
+      }
+    }, [map, mapBounds]);
+    return null;
+  };
+
   const handleLocationClick = (location: Location) => {
-    setSelectedLocation(location);
+    // Immediately select and close
+    onLocationSelect(location.name);
+    handleClose();
   };
 
   const handleConfirmSelection = () => {
@@ -61,68 +88,32 @@ const LocationPicker = ({ isOpen, onClose, onLocationSelect, title = "Select Loc
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <MapPinIcon className="h-5 w-5 text-primary" />
-              {title}
-            </span>
-            <Button variant="ghost" size="icon" onClick={handleClose}>
-              <XIcon className="h-4 w-4" />
-            </Button>
+          <DialogTitle className="flex items-center gap-2">
+            <MapPinIcon className="h-5 w-5 text-primary" />
+            {title}
           </DialogTitle>
         </DialogHeader>
         
         <div className="flex h-full">
-          {/* Map Area */}
-          <div className="flex-1 relative bg-gradient-to-br from-muted to-secondary/30">
-            {/* Google Maps-like Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-muted/50">
-              {/* Road patterns */}
-              <div className="absolute inset-0 opacity-20">
-                <div className="absolute top-1/4 left-0 right-0 h-px bg-muted-foreground/30"></div>
-                <div className="absolute top-1/2 left-0 right-0 h-px bg-muted-foreground/30"></div>
-                <div className="absolute top-3/4 left-0 right-0 h-px bg-muted-foreground/30"></div>
-                <div className="absolute left-1/4 top-0 bottom-0 w-px bg-muted-foreground/30"></div>
-                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-muted-foreground/30"></div>
-                <div className="absolute left-3/4 top-0 bottom-0 w-px bg-muted-foreground/30"></div>
-              </div>
-              
-              {/* Location Pins */}
-              {filteredLocations.map((location, index) => (
-                <div
-                  key={location.id}
-                  className={`absolute transform -translate-x-1/2 -translate-y-full cursor-pointer transition-all duration-300 hover:scale-110 ${
-                    selectedLocation?.id === location.id ? 'scale-125 z-10' : ''
-                  }`}
-                  style={{
-                    left: `${20 + (index % 4) * 20 + Math.random() * 10}%`,
-                    top: `${20 + Math.floor(index / 4) * 25 + Math.random() * 10}%`,
-                  }}
-                  onClick={() => handleLocationClick(location)}
-                >
-                  <div className={`relative ${selectedLocation?.id === location.id ? 'animate-bounce' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-elevated transition-colors ${
-                      selectedLocation?.id === location.id 
-                        ? 'bg-warm-orange' 
-                        : 'bg-university-teal hover:bg-university-blue'
-                    }`}>
-                      📍
+          {/* Map Area (interactive Leaflet) */}
+          <div className="flex-1 relative">
+            <MapContainer style={{ height: "100%", width: "100%" }} center={[18.8769, 77.9436]} zoom={16}>
+              <TileLayer
+                attribution='&copy; OpenStreetMap contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <FitView />
+              {(filteredLocations.length ? filteredLocations : locations).map((loc) => (
+                <Marker key={loc.id} position={[loc.lat, loc.lng]} eventHandlers={{ click: () => handleLocationClick(loc) }}>
+                  <Popup>
+                    <div className="space-y-1">
+                      <div className="font-medium text-sm">{loc.name}</div>
+                      <div className="text-xs text-muted-foreground">{loc.type}</div>
                     </div>
-                    {selectedLocation?.id === location.id && (
-                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-background border shadow-elevated rounded-lg p-2 min-w-32 text-center z-20">
-                        <div className="font-medium text-sm">{location.name}</div>
-                        <div className="text-xs text-muted-foreground">{location.type}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  </Popup>
+                </Marker>
               ))}
-              
-              {/* UniMap Watermark */}
-              <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm px-3 py-1 rounded-md shadow-card">
-                <span className="font-semibold text-primary text-sm">UniMap</span>
-              </div>
-            </div>
+            </MapContainer>
           </div>
           
           {/* Sidebar */}

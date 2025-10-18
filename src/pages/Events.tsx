@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,117 +17,73 @@ import {
   MapIcon,
   CheckCircleIcon
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LocationPicker from "@/components/LocationPicker";
+import { listEvents, type EventDoc } from "@/services/firestore";
+import { createEnrollment, addStudentChoice, listEnrollments, listStudentChoices } from "@/services/firestore";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const [interestedEvents, setInterestedEvents] = useState<number[]>([]);
-  const [enrolledEvents, setEnrolledEvents] = useState<number[]>([]);
+  const [interestedEvents, setInterestedEvents] = useState<string[]>([]);
+  const [enrolledEvents, setEnrolledEvents] = useState<string[]>([]);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [locationFromURL, setLocationFromURL] = useState<string | null>(null);
 
-  const events = [
-    {
-      id: 1,
-      title: "Machine Learning Workshop",
-      description: "Learn the fundamentals of machine learning with hands-on projects and real-world applications.",
-      date: "2024-01-20",
-      time: "2:00 PM - 5:00 PM",
-      location: "Science Building Room 201",
-      category: "academic",
-      attendees: 45,
-      maxAttendees: 60,
-      price: "Free",
-      organizer: "Computer Science Department",
-      image: "🧠",
-      rating: 4.8,
-      tags: ["Technology", "Workshop", "Free"]
-    },
-    {
-      id: 2,
-      title: "Spring Music Festival",
-      description: "Join us for a day of live music, food trucks, and campus community celebration.",
-      date: "2024-01-25",
-      time: "12:00 PM - 8:00 PM",
-      location: "Campus Quad",
-      category: "cultural",
-      attendees: 120,
-      maxAttendees: 200,
-      price: "$5",
-      organizer: "Student Activities Board",
-      image: "🎵",
-      rating: 4.6,
-      tags: ["Music", "Festival", "Food"]
-    },
-    {
-      id: 3,
-      title: "Basketball Championship Finals",
-      description: "Watch the final game of the campus basketball tournament. Free admission for students.",
-      date: "2024-01-22",
-      time: "7:00 PM - 9:00 PM",
-      location: "Sports Arena",
-      category: "sports",
-      attendees: 300,
-      maxAttendees: 500,
-      price: "Free",
-      organizer: "Athletics Department",
-      image: "🏀",
-      rating: 4.9,
-      tags: ["Sports", "Championship", "Free"]
-    },
-    {
-      id: 4,
-      title: "Art Exhibition Opening",
-      description: "View the latest student artwork and meet the artists behind these creative pieces.",
-      date: "2024-01-18",
-      time: "6:00 PM - 9:00 PM",
-      location: "Arts Center Gallery",
-      category: "cultural",
-      attendees: 25,
-      maxAttendees: 50,
-      price: "Free",
-      organizer: "Art Department",
-      image: "🎨",
-      rating: 4.7,
-      tags: ["Art", "Exhibition", "Free"]
-    },
-    {
-      id: 5,
-      title: "Career Fair 2024",
-      description: "Connect with top employers and explore internship and job opportunities.",
-      date: "2024-01-30",
-      time: "10:00 AM - 4:00 PM",
-      location: "Student Union Ballroom",
-      category: "professional",
-      attendees: 200,
-      maxAttendees: 300,
-      price: "Free",
-      organizer: "Career Services",
-      image: "💼",
-      rating: 4.5,
-      tags: ["Career", "Networking", "Free"]
-    },
-    {
-      id: 6,
-      title: "Environmental Sustainability Talk",
-      description: "Learn about sustainable practices and how to make a positive impact on the environment.",
-      date: "2024-01-28",
-      time: "3:00 PM - 4:30 PM",
-      location: "Environmental Science Building",
-      category: "academic",
-      attendees: 35,
-      maxAttendees: 80,
-      price: "Free",
-      organizer: "Environmental Studies",
-      image: "🌱",
-      rating: 4.4,
-      tags: ["Environment", "Education", "Free"]
+  const [events, setEvents] = useState<(EventDoc & { id?: string })[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const remote = await listEvents();
+        setEvents(remote);
+      } catch (e) {
+        setEvents([]);
+      }
+    })();
+  }, []);
+
+  // Apply place filter from URL (exact match for location)
+  useEffect(() => {
+    const place = searchParams.get('place');
+    if (place) {
+      setSelectedLocation(place);
+      setLocationFromURL(place);
+    } else {
+      setLocationFromURL(null);
     }
-  ];
+  }, [searchParams]);
+
+  // Load persisted choices/enrollments for current user
+  useEffect(() => {
+    if (!user) {
+      setInterestedEvents([]);
+      setEnrolledEvents([]);
+      return;
+    }
+    (async () => {
+      try {
+        const ens = await listEnrollments(user.id);
+        const enrolledIds = ens.map(e => e.eventId);
+        setEnrolledEvents(enrolledIds);
+      } catch {}
+      try {
+        const cs = await listStudentChoices(user.id);
+        const interestedIds = cs
+          .map(c => c.value)
+          .filter(v => v.startsWith('interested:'))
+          .map(v => v.split(':')[1]);
+        setInterestedEvents(interestedIds);
+      } catch {}
+    })();
+  }, [user]);
 
   const categories = [
     { value: "all", label: "All Categories" },
@@ -143,25 +99,43 @@ const Events = () => {
                          event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          event.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
-    const matchesLocation = !selectedLocation || event.location.toLowerCase().includes(selectedLocation.toLowerCase());
+    const matchesLocation = !selectedLocation
+      ? true
+      : locationFromURL
+        ? event.location.toLowerCase() === selectedLocation.toLowerCase()
+        : event.location.toLowerCase().includes(selectedLocation.toLowerCase());
     
     return matchesSearch && matchesCategory && matchesLocation;
   });
 
-  const handleInterestToggle = (eventId: number) => {
-    setInterestedEvents(prev => 
-      prev.includes(eventId) 
-        ? prev.filter(id => id !== eventId)
-        : [...prev, eventId]
-    );
+  const handleInterestToggle = async (eventId: string, eventTitle: string) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setInterestedEvents(prev => prev.includes(eventId) ? prev.filter(id => id !== eventId) : [...prev, eventId]);
+    try {
+      await addStudentChoice(user.id, `interested:${eventId}:${eventTitle}`);
+    } catch (e) {
+      // ignore silently for now; could toast
+    }
   };
 
-  const handleEnrollmentToggle = (eventId: number) => {
-    setEnrolledEvents(prev => 
-      prev.includes(eventId) 
-        ? prev.filter(id => id !== eventId)
-        : [...prev, eventId]
-    );
+  const handleEnrollmentToggle = async (eventId: string, eventDocId?: string) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    // prevent toggle-off; treat as idempotent enrollment
+    if (enrolledEvents.includes(eventId)) return;
+    setEnrolledEvents(prev => prev.concat(eventId));
+    try {
+      if (eventDocId) {
+        await createEnrollment(eventDocId, user.id);
+      }
+    } catch (e) {
+      // ignore silently for now; could toast
+    }
   };
 
   const handleLocationSelect = (location: string) => {
@@ -251,12 +225,27 @@ const Events = () => {
 
           {/* Events Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="border-0 shadow-card hover:shadow-elevated transition-all duration-300 group">
+            {filteredEvents.map((event) => {
+              const eid = (event as any).id as string;
+              return (
+              <Card
+                key={event.id}
+                className="border-0 shadow-card hover:shadow-elevated transition-all duration-300 group cursor-pointer"
+                onClick={() => navigate(`/event/${eid}`)}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{event.image}</span>
+                    <div className="flex items-center gap-3">
+                      {event.image ? (
+                        <img
+                          src={event.image}
+                          alt={event.title}
+                          className="w-12 h-12 rounded object-cover border"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded bg-secondary/60 flex items-center justify-center text-muted-foreground">🏷️</div>
+                      )}
                       <div>
                         <CardTitle className="text-lg group-hover:text-primary transition-colors">
                           {event.title}
@@ -302,24 +291,12 @@ const Events = () => {
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Attendance</span>
-                      <span>{Math.round((event.attendees / event.maxAttendees) * 100)}%</span>
-                    </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div 
-                        className="bg-primary h-2 rounded-full transition-all duration-300" 
-                        style={{ width: `${(event.attendees / event.maxAttendees) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
+                  
 
                   {/* Price */}
                   <div className="text-center">
                     <Badge variant={event.price === "Free" ? "default" : "outline"} className="text-sm">
-                      {event.price === "Free" ? "Free Event" : `$${event.price}`}
+                      {event.price === "Free" ? "Free Event" : event.price}
                     </Badge>
                   </div>
 
@@ -329,19 +306,19 @@ const Events = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleInterestToggle(event.id)}
+                        onClick={(e) => { e.stopPropagation(); handleInterestToggle(eid, event.title); }}
                         className={`flex-1 ${
-                          interestedEvents.includes(event.id)
+                          interestedEvents.includes(eid)
                             ? 'bg-primary text-white hover:bg-primary/90'
                             : 'hover:bg-secondary/50'
                         }`}
                       >
                         <HeartIcon className={`mr-2 h-4 w-4 ${
-                          interestedEvents.includes(event.id) ? 'fill-current' : ''
+                          interestedEvents.includes(eid) ? 'fill-current' : ''
                         }`} />
-                        {interestedEvents.includes(event.id) ? 'Interested' : 'Mark Interest'}
+                        {interestedEvents.includes(eid) ? 'Interested' : 'Mark Interest'}
                       </Button>
-                      <Button variant="outline" size="sm" className="hover:bg-secondary/50">
+                      <Button variant="outline" size="sm" className="hover:bg-secondary/50" onClick={(e) => e.stopPropagation()}>
                         <ShareIcon className="h-4 w-4" />
                       </Button>
                     </div>
@@ -349,14 +326,14 @@ const Events = () => {
                     {/* Enrollment Button */}
                     <Button
                       size="sm"
-                      onClick={() => handleEnrollmentToggle(event.id)}
+                      onClick={(e) => { e.stopPropagation(); handleEnrollmentToggle(eid, eid); }}
                       className={`w-full ${
-                        enrolledEvents.includes(event.id)
+                        enrolledEvents.includes(eid)
                           ? 'bg-green-600 hover:bg-green-700 text-white'
                           : 'bg-gradient-primary border-0 hover:shadow-glow transition-all duration-300'
                       }`}
                     >
-                      {enrolledEvents.includes(event.id) ? (
+                      {enrolledEvents.includes(eid) ? (
                         <>
                           <CheckCircleIcon className="mr-2 h-4 w-4" />
                           Enrolled
@@ -371,7 +348,8 @@ const Events = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
 
           {/* No Results */}

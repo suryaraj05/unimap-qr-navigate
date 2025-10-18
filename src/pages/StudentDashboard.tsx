@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -5,66 +6,68 @@ import { MapIcon, CalendarIcon, QrCodeIcon, ClockIcon, StarIcon, TrendingUpIcon,
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/contexts/AuthContext";
+import { listEvents, type EventDoc, listEnrollments, listStudentChoices } from "@/services/firestore";
 
 const StudentDashboard = () => {
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: "Machine Learning Workshop",
-      date: "March 18, 2024",
-      time: "3:00 PM",
-      location: "Science Building Room 201",
-      category: "academic",
-    },
-    {
-      id: 2,
-      title: "Spring Music Festival",
-      date: "March 20, 2024",
-      time: "12:00 PM",
-      location: "Campus Quad",
-      category: "cultural",
-    },
-    {
-      id: 3,
-      title: "Basketball Championship Finals",
-      date: "March 22, 2024",
-      time: "7:00 PM",
-      location: "Sports Arena",
-      category: "sports",
-    },
-  ];
+  const { user } = useAuth();
+  const [events, setEvents] = useState<(EventDoc & { id?: string })[]>([]);
+  const [enrollments, setEnrollments] = useState<{ id: string; eventId: string }[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
 
-  const recentReviews = [
-    {
-      event: "Computer Science Career Fair",
-      rating: 5,
-      comment: "Great networking opportunities and helpful career advice!",
-      date: "2 days ago",
-    },
-    {
-      event: "International Food Festival",
-      rating: 4,
-      comment: "Amazing food variety, could use better organization.",
-      date: "1 week ago",
-    },
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        const es = await listEvents();
+        setEvents(es);
+      } catch {}
+    })();
+  }, []);
 
-  const quickStats = [
-    { label: "Events Attended", value: "12", icon: CalendarIcon, color: "text-primary" },
-    { label: "Favorite Locations", value: "8", icon: MapIcon, color: "text-accent" },
-    { label: "QR Codes Generated", value: "23", icon: QrCodeIcon, color: "text-warm-orange" },
-    { label: "Campus Rating", value: "4.8", icon: StarIcon, color: "text-success-green" },
-  ];
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const ens = await listEnrollments(user.id);
+        setEnrollments(ens.map(e => ({ id: e.id, eventId: e.eventId })));
+      } catch {}
+      try {
+        const cs = await listStudentChoices(user.id);
+        const interested = cs
+          .map(c => c.value)
+          .filter(v => v.startsWith('interested:'))
+          .map(v => v.split(':')[1]);
+        setInterests(interested);
+      } catch {}
+    })();
+  }, [user]);
+
+  const enrolledEvents = useMemo(() => {
+    const ids = new Set(enrollments.map(e => e.eventId));
+    return events.filter(ev => ids.has((ev as any).id as string));
+  }, [enrollments, events]);
+
+  const interestedEvents = useMemo(() => {
+    const ids = new Set(interests);
+    return events.filter(ev => ids.has((ev as any).id as string));
+  }, [interests, events]);
+
+  const quickStats = useMemo(() => ([
+    { label: 'Events Enrolled', value: String(enrolledEvents.length), icon: CalendarIcon, color: 'text-primary' },
+    { label: 'Interested', value: String(interestedEvents.length), icon: StarIcon, color: 'text-accent' },
+    { label: 'QR Codes Generated', value: '—', icon: QrCodeIcon, color: 'text-warm-orange' },
+    { label: 'Campus Rating', value: '4.8', icon: StarIcon, color: 'text-success-green' },
+  ]), [enrolledEvents.length, interestedEvents.length]);
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header isAuthenticated={true} userRole="student" />
+      <Header />
       
       <main className="flex-1 py-8 bg-gradient-secondary/30">
         <div className="container">
           {/* Welcome Section */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Welcome back, Alex! 👋</h1>
+            <h1 className="text-3xl font-bold mb-2">Welcome back{user?.name ? `, ${user.name}` : ''}! 👋</h1>
             <p className="text-muted-foreground text-lg">Here's what's happening on your campus today.</p>
           </div>
 
@@ -84,20 +87,20 @@ const StudentDashboard = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column */}
             <div className="lg:col-span-2 space-y-6">
-              {/* My Upcoming Events */}
+              {/* Enrolled Events */}
               <Card className="shadow-card border-0">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <CalendarIcon className="h-5 w-5 text-primary" />
-                    My Upcoming Events
+                    My Enrolled Events
                   </CardTitle>
                   <Button variant="ghost" size="sm" asChild>
                     <Link to="/events">View All</Link>
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {upcomingEvents.map((event) => (
-                    <div key={event.id} className="flex items-start justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors">
+                  {enrolledEvents.map((event) => (
+                    <div key={(event as any).id} className="flex items-start justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors">
                       <div className="space-y-1">
                         <div className="font-medium">{event.title}</div>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -122,44 +125,33 @@ const StudentDashboard = () => {
                       </div>
                     </div>
                   ))}
-                  {upcomingEvents.length === 0 && (
+                  {enrolledEvents.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
                       <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>No upcoming events. Explore events to get started!</p>
+                      <p>No enrollments yet. Explore events to get started!</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Recent Reviews */}
+              {/* Interested Events */}
               <Card className="shadow-card border-0">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <StarIcon className="h-5 w-5 text-primary" />
-                    Recent Reviews
-                  </CardTitle>
+                  <CardTitle className="flex items-center gap-2">Interested Events</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {recentReviews.map((review, index) => (
-                    <div key={index} className="p-4 bg-secondary/30 rounded-lg">
+                  {interestedEvents.map((event) => (
+                    <div key={(event as any).id} className="p-4 bg-secondary/30 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
-                        <div className="font-medium">{review.event}</div>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <StarIcon 
-                              key={i} 
-                              className={`h-3 w-3 ${i < review.rating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`}
-                            />
-                          ))}
-                        </div>
+                        <div className="font-medium">{event.title}</div>
+                        <Badge variant="secondary" className="capitalize">{event.category}</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">"{review.comment}"</p>
-                      <div className="text-xs text-muted-foreground">{review.date}</div>
+                      <div className="text-sm text-muted-foreground">{event.location}</div>
                     </div>
                   ))}
-                  {recentReviews.length === 0 && (
+                  {interestedEvents.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground">
-                      <p>No reviews yet. Attend events and share your experience!</p>
+                      <p>No interested events yet. Mark interest from the events page.</p>
                     </div>
                   )}
                 </CardContent>

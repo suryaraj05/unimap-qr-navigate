@@ -9,6 +9,7 @@ import { EyeIcon, EyeOffIcon, MapIcon, MailIcon, LockIcon, UserIcon, GraduationC
 import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +22,9 @@ const Register = () => {
     role: "student",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { signup } = useAuth();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -32,19 +35,25 @@ const Register = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setError("");
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords don't match!");
       return;
     }
     
     setIsLoading(true);
-    
-    // Simulate registration process
-    setTimeout(() => {
+    const ok = await signup(formData.email, formData.password, formData.fullName, formData.role as any);
+    if (ok) {
       setIsLoading(false);
-      navigate("/email-verification");
-    }, 2000);
+      if (formData.role === 'host') {
+        navigate('/host-request');
+      } else {
+        navigate(`/${formData.role}-dashboard`);
+      }
+    } else {
+      setIsLoading(false);
+      setError("Failed to create account. Please try again.");
+    }
   };
 
   const roleIcons = {
@@ -77,6 +86,9 @@ const Register = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleRegister} className="space-y-4">
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+                )}
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <UserIcon className="h-4 w-4 text-primary" />

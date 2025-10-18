@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,75 +17,46 @@ import {
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/contexts/AuthContext";
+import { listEvents, type EventDoc, listEnrollmentsByEvent } from "@/services/firestore";
 
 const HostDashboard = () => {
   const [activeTab, setActiveTab] = useState("events");
+  const { user } = useAuth();
+  const [events, setEvents] = useState<(EventDoc & { id?: string })[]>([]);
+  const [attendeeCounts, setAttendeeCounts] = useState<Record<string, number>>({});
 
-  const myEvents = [
-    {
-      id: 1,
-      title: "Campus Tech Meetup",
-      date: "2024-01-15",
-      time: "6:00 PM",
-      location: "Student Union",
-      attendees: 45,
-      maxAttendees: 100,
-      status: "upcoming",
-      description: "Join us for an evening of tech discussions and networking"
-    },
-    {
-      id: 2,
-      title: "Art Exhibition Opening",
-      date: "2024-01-20",
-      time: "7:00 PM",
-      location: "Arts Center",
-      attendees: 23,
-      maxAttendees: 50,
-      status: "upcoming",
-      description: "Showcase of student artwork and creative projects"
-    },
-    {
-      id: 3,
-      title: "Study Group Session",
-      date: "2024-01-10",
-      time: "2:00 PM",
-      location: "Main Library",
-      attendees: 12,
-      maxAttendees: 15,
-      status: "completed",
-      description: "Group study session for final exams"
-    }
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        const all = await listEvents();
+        // filter by createdBy if present
+        const mine = all.filter((e: any) => e.createdBy && user && e.createdBy === user.id);
+        setEvents(mine);
+        // fetch enrollments per event
+        const pairs = await Promise.all(
+          mine.map(async (e: any) => {
+            const list = await listEnrollmentsByEvent(e.id as string);
+            return [e.id as string, list.length] as const;
+          })
+        );
+        const map: Record<string, number> = {};
+        pairs.forEach(([id, count]) => { map[id] = count; });
+        setAttendeeCounts(map);
+      } catch {}
+    })();
+  }, [user]);
 
-  const recentFeedback = [
-    {
-      id: 1,
-      eventTitle: "Campus Tech Meetup",
-      rating: 5,
-      comment: "Great event! Really enjoyed the networking opportunities.",
-      attendee: "Sarah M.",
-      date: "2024-01-15"
-    },
-    {
-      id: 2,
-      eventTitle: "Art Exhibition Opening",
-      rating: 4,
-      comment: "Beautiful artwork, well organized event.",
-      attendee: "Mike R.",
-      date: "2024-01-20"
-    }
-  ];
-
-  const stats = {
-    totalEvents: 12,
-    upcomingEvents: 3,
-    totalAttendees: 234,
-    averageRating: 4.7
-  };
+  const stats = useMemo(() => {
+    const totalEvents = events.length;
+    const upcomingEvents = events.filter(e => e.date >= new Date().toISOString().slice(0,10)).length;
+    const totalAttendees = Object.values(attendeeCounts).reduce((a,b) => a+b, 0);
+    return { totalEvents, upcomingEvents, totalAttendees, averageRating: 0 };
+  }, [events, attendeeCounts]);
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header isAuthenticated={true} userRole="host" />
+      <Header />
       
       <main className="flex-1 py-8 bg-gradient-secondary">
         <div className="container">
@@ -190,16 +161,14 @@ const HostDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {myEvents.map((event) => (
-                    <div key={event.id} className="p-4 border rounded-lg hover:shadow-card transition-all duration-200">
+                  {events.map((event) => (
+                    <div key={(event as any).id} className="p-4 border rounded-lg hover:shadow-card transition-all duration-200">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg">{event.title}</h3>
                           <p className="text-sm text-muted-foreground">{event.description}</p>
                         </div>
-                        <Badge variant={event.status === 'upcoming' ? 'default' : 'secondary'}>
-                          {event.status}
-                        </Badge>
+                        <Badge variant="secondary">{event.category}</Badge>
                       </div>
                       
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
@@ -220,13 +189,13 @@ const HostDashboard = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="text-sm">
-                            <span className="font-medium">{event.attendees}</span>
+                            <span className="font-medium">{attendeeCounts[(event as any).id as string] || 0}</span>
                             <span className="text-muted-foreground">/{event.maxAttendees} attendees</span>
                           </div>
                           <div className="w-24 bg-secondary rounded-full h-2">
                             <div 
                               className="bg-primary h-2 rounded-full" 
-                              style={{ width: `${(event.attendees / event.maxAttendees) * 100}%` }}
+                              style={{ width: `${Math.min(100, ((attendeeCounts[(event as any).id as string] || 0) / Math.max(1, event.maxAttendees)) * 100)}%` }}
                             ></div>
                           </div>
                         </div>
@@ -245,6 +214,9 @@ const HostDashboard = () => {
                       </div>
                     </div>
                   ))}
+                  {events.length === 0 && (
+                    <div className="text-sm text-muted-foreground">No events created yet. Use "Create New Event" to add your first event.</div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -260,26 +232,9 @@ const HostDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {recentFeedback.map((feedback) => (
-                    <div key={feedback.id} className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm">{feedback.eventTitle}</h4>
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <StarIcon 
-                              key={i} 
-                              className={`h-3 w-3 ${i < feedback.rating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} 
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{feedback.comment}</p>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{feedback.attendee}</span>
-                        <span>{feedback.date}</span>
-                      </div>
-                    </div>
-                  ))}
+                  <div className="p-3 border rounded-lg text-sm text-muted-foreground">
+                    Feedback feature coming soon.
+                  </div>
                 </CardContent>
               </Card>
 
